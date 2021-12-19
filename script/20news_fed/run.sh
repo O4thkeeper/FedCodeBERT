@@ -1,14 +1,25 @@
 py=/Users/fenghao/Documents/pythonWork/venv/bin/python
 #py=python
 
-sh data/manual_process/download/20news.sh
-
-${py} -m data.manual_process.load.20news
-
-${py} -m data.manual_process.partition.niid_quantity \
---client_number 10  \
---data_file data/store/20news/20news_data.h5  \
---partition_file data/store/20news/20news_partition.h5 \
---task_type text_classification \
---kmeans_num 0 \
---beta 5
+mpirun -np 11 -hostfile mpi_host_file \
+${py} -m fedavg_main_tc \
+  --gpu_mapping_file "gpu_mapping.yaml" \
+  --gpu_mapping_key mapping_a100 \
+  --client_num_per_round 2 \
+  --comm_round 10 \
+  --ci 0 \
+  --dataset "20news" \
+  --data_file "data/store/20news/20news_data.h5" \
+  --partition_file "data/store/20news/20news_partition.h5" \
+  --partition_method niid_quantity_clients=10_beta=5.0 \
+  --fl_algorithm FedAvg \
+  --model_type distilbert \
+  --model_name distilbert-base-uncased \
+  --do_lower_case True \
+  --train_batch_size 32 \
+  --eval_batch_size 8 \
+  --max_seq_length 256 \
+  --lr 5e-5 \
+  --server_lr 0.1 \
+  --epochs 1 \
+  --output_dir "/tmp/fedavg_20news_output/"
