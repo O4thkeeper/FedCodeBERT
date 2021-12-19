@@ -1,0 +1,37 @@
+.DS_Store
+.idea
+.idea/*
+.vscode/*
+
+*.pyc
+./*/*.pyc
+./*/*/*.pyc
+./*/*/*/*.pyc
+./*/*/*/*/*.pyc
+./*/*/*/*/*/*.pyc
+
+*.log
+
+runs/
+outputs/
+cache_dir/
+
+wandb
+./*/wandb
+./*/*/wandb
+./*/*/*/wandb
+./*/*/*/*/wandb
+./*/*/*/*/*/wandb
+
+
+# *.txt
+*.h5
+
+# data
+*.rar
+*.csv
+*.dat
+*.tar.gz
+*.zip
+*.json
+*.png
