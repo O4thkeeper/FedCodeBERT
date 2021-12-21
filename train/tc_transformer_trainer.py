@@ -64,13 +64,11 @@ class TextClassificationTrainer:
 
         if self.args.fl_algorithm == "FedProx":
             global_model = copy.deepcopy(self.model)
-
+        logging.info("ready to train")
         for epoch in range(0, self.args.epochs):
-
             for batch_idx, batch in enumerate(self.train_dl):
                 self.model.train()
                 batch = tuple(t for t in batch)
-                # dataset = TensorDataset(all_guid, all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
                 x = batch[1].to(device)
                 labels = batch[4].to(device)
 
@@ -89,12 +87,9 @@ class TextClassificationTrainer:
                         fed_prox_reg += ((mu / 2) * torch.norm((p - g_p.data)) ** 2)
                     loss += fed_prox_reg
 
-                # model outputs are always tuple in pytorch-transformers (see doc)
-                # loss = outputs[0]
-                # logging.info(loss)
                 current_loss = loss.item()
                 logging.info("epoch = %d, batch_idx = %d/%d, loss = %s" % (epoch, batch_idx,
-                                                                           len(self.train_dl), current_loss))
+                                                                           len(self.train_dl) - 1, current_loss))
 
                 if self.args.gradient_accumulation_steps > 1:
                     loss = loss / self.args.gradient_accumulation_steps
@@ -103,6 +98,7 @@ class TextClassificationTrainer:
 
                 tr_loss += loss.item()
                 if (batch_idx + 1) % self.args.gradient_accumulation_steps == 0:
+                    logging.info("do gradient %d" % epoch)
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
                     optimizer.step()
                     scheduler.step()  # Update learning rate schedule
@@ -111,13 +107,15 @@ class TextClassificationTrainer:
 
                     if self.args.evaluate_during_training and (self.args.evaluate_during_training_steps > 0
                                                                and global_step % self.args.evaluate_during_training_steps == 0):
+                        logging.info('do eval %d' % epoch)
                         results, _, _ = self.eval_model(epoch, global_step)
                         logging.info(results)
 
                 if self.args.is_debug_mode == 1 and global_step > 3:
                     break
+            logging.info("epoch %d finished" % epoch)
         # results, _, _ = self.eval_model(self.args.epochs-1, global_step)
-        # logging.info(results)
+        logging.info("train returned")
         return global_step, tr_loss / global_step
 
     def eval_model(self, epoch=0, global_step=0, device=None):
@@ -179,11 +177,11 @@ class TextClassificationTrainer:
         if result["acc"] > self.best_accuracy:
             self.best_accuracy = result["acc"]
         logging.info("best_accuracy = %f" % self.best_accuracy)
-        wandb.log(result)
-
-        wandb.log({"Evaluation Accuracy (best)": self.best_accuracy})
-        wandb.log({"Evaluation Accuracy": result["acc"]})
-        wandb.log({"Evaluation Loss": result["eval_loss"]})
+        # wandb.log(result)
+        #
+        # wandb.log({"Evaluation Accuracy (best)": self.best_accuracy})
+        # wandb.log({"Evaluation Accuracy": result["acc"]})
+        # wandb.log({"Evaluation Loss": result["eval_loss"]})
 
         self.results.update(result)
         logging.info(self.results)
@@ -244,4 +242,3 @@ def get_parameter_number(net):
     total_num = sum(p.numel() for p in net.parameters())
     trainable_num = sum(p.numel() for p in net.parameters() if p.requires_grad)
     return {'Total': total_num, 'Trainable': trainable_num}
-

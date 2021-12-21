@@ -55,8 +55,7 @@ def create_model(args, formulation="classification"):
             "bart": (BartConfig, BartForConditionalGeneration, BartTokenizer),
         }
     }
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[formulation][
-        args.model_type]
+    config_class, model_class, tokenizer_class = MODEL_CLASSES[formulation][args.model_type]
     # config = config_class.from_pretrained(
     #     args.model_name, num_labels=args.num_labels, **args.config)
     config = config_class.from_pretrained(args.model_name, **args.config)

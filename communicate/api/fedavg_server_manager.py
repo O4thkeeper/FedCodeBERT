@@ -28,7 +28,6 @@ class FedAVGServerManager(ServerManager):
         client_indexes = self.aggregator.client_sampling(self.round_idx, self.args.client_num_in_total,
                                                          self.args.client_num_per_round)
         global_model_params = self.aggregator.get_global_model_params()
-        # todo fix bug
         for client_index in client_indexes:
             self.send_message_sync_model_to_client(client_index + 1, global_model_params, client_index)
 
@@ -42,7 +41,7 @@ class FedAVGServerManager(ServerManager):
         local_sample_number = msg_params.get(MyMessage.MSG_ARG_KEY_NUM_SAMPLES)
 
         self.aggregator.add_local_trained_result(sender_id - 1, model_params, local_sample_number)
-        b_all_received = self.aggregator.check_whether_all_receive()
+        b_all_received = self.aggregator.check_whether_all_receive(self.args.client_num_per_round)
         logging.info("b_all_received = " + str(b_all_received))
         if b_all_received:
             global_model_params = self.aggregator.aggregate()

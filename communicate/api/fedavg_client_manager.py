@@ -46,9 +46,6 @@ class FedAVGClientManager(ClientManager):
         model_params = msg_params.get(MyMessage.MSG_ARG_KEY_MODEL_PARAMS)
         client_index = msg_params.get(MyMessage.MSG_ARG_KEY_CLIENT_INDEX)
 
-        if self.args.is_mobile == 1:
-            model_params = transform_list_to_tensor(model_params)
-
         self.trainer.update_model(model_params)
         # todo update maybe unnecessary
         # self.trainer.update_dataset(int(client_index))
@@ -72,4 +69,5 @@ class FedAVGClientManager(ClientManager):
     def __train(self):
         # logging.info("#######training########### round_id = %d" % self.round_idx)
         weights, local_sample_num = self.trainer.train()
+        logging.info("client %d send to server" % self.rank)
         self.send_model_to_server(0, weights, local_sample_num)

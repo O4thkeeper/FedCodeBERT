@@ -20,6 +20,7 @@ class FedTransformerTrainer(ModelTrainer):
         logging.info("Client(%d)" % self.id + ":| Local Train Data Size = %d" % (len(train_data)))
         self.model_trainer.train_dl = train_data
         self.model_trainer.train_model(device=device)
+        logging.info("Client %d train model finished" % self.id)
 
     def test(self, test_data, device, args=None):
         pass

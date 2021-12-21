@@ -1,5 +1,7 @@
 import copy
 import logging
+import os.path
+import pickle
 import random
 import time
 
@@ -20,11 +22,13 @@ class FedAVGAggregator(object):
 
         self.worker_num = worker_num
         self.device = device
-        self.model_dict = dict()
-        self.sample_num_dict = dict()
-        self.flag_client_model_uploaded_dict = dict()
-        for idx in range(self.worker_num):
-            self.flag_client_model_uploaded_dict[idx] = False
+        # self.model_dict = dict()
+        self.model_path_list = list()
+        self.sample_num_list = list()
+        self.receive_num = 0
+        # self.flag_client_model_uploaded_dict = dict()
+        # for idx in range(self.worker_num):
+        #     self.flag_client_model_uploaded_dict[idx] = False
 
     def get_global_model_params(self):
         return self.trainer.get_model_params()
@@ -34,37 +38,33 @@ class FedAVGAggregator(object):
 
     def add_local_trained_result(self, index, model_params, sample_num):
         logging.info("add_model. index = %d" % index)
-        self.model_dict[index] = model_params
-        self.sample_num_dict[index] = sample_num
-        self.flag_client_model_uploaded_dict[index] = True
+        filename = os.path.join('cache', str(time.time()))
+        with open(filename, 'wb') as f:
+            pickle.dump(model_params, f)
+            self.model_path_list.append(filename)
+        self.sample_num_list.append(sample_num)
+        self.receive_num += 1
 
-    def check_whether_all_receive(self):
-        for idx in range(self.worker_num):
-            if not self.flag_client_model_uploaded_dict[idx]:
-                return False
-        for idx in range(self.worker_num):
-            self.flag_client_model_uploaded_dict[idx] = False
-        return True
+    def check_whether_all_receive(self, client_num):
+        if client_num == self.receive_num:
+            self.receive_num = 0
+            return True
+        return False
 
     def aggregate(self):
         start_time = time.time()
-        model_list = []
-        training_num = 0
+        training_num = sum(self.sample_num_list)
 
-        for idx in range(self.worker_num):
-            if self.args.is_mobile == 1:
-                self.model_dict[idx] = transform_list_to_tensor(self.model_dict[idx])
-            model_list.append((self.sample_num_dict[idx], self.model_dict[idx]))
-            training_num += self.sample_num_dict[idx]
+        logging.info("len of self.model_path_list = " + str(len(self.model_path_list)))
 
-        logging.info("len of self.model_dict[idx] = " + str(len(self.model_dict)))
-
-        # logging.info("################aggregate: %d" % len(model_list))
-        (num0, averaged_params) = model_list[0]
-        for k in averaged_params.keys():
-            for i in range(0, len(model_list)):
-                local_sample_number, local_model_params = model_list[i]
-                w = local_sample_number / training_num
+        with open(self.model_path_list[0], 'rb') as f:
+            averaged_params = pickle.load(f)
+        for i in range(0, len(self.model_path_list)):
+            local_sample_number = self.sample_num_list[i]
+            with open(self.model_path_list[i], 'rb') as f:
+                local_model_params = pickle.load(f)
+            w = local_sample_number / training_num
+            for k in averaged_params.keys():
                 if i == 0:
                     averaged_params[k] = local_model_params[k] * w
                 else:
@@ -87,69 +87,7 @@ class FedAVGAggregator(object):
         logging.info("client_indexes = %s" % str(client_indexes))
         return client_indexes
 
-    # def _generate_validation_set(self, num_samples=10000):
-    #     if self.args.dataset.startswith("stackoverflow"):
-    #         test_data_num = len(self.test_global.dataset)
-    #         sample_indices = random.sample(range(test_data_num), min(num_samples, test_data_num))
-    #         subset = torch.utils.data.Subset(self.test_global.dataset, sample_indices)
-    #         sample_testset = torch.utils.data.DataLoader(subset, batch_size=self.args.batch_size)
-    #         return sample_testset
-    #     else:
-    #         return self.test_global
-
     def test_on_server_for_all_clients(self, round_idx):
         if not self.trainer.test_on_the_server(self.device):
             logging.info("round %d not tested all" % round_idx)
         return
-        # if round_idx % self.args.frequency_of_the_test == 0 or round_idx == self.args.comm_round - 1:
-        #     logging.info("################test_on_server_for_all_clients : {}".format(round_idx))
-        #     train_num_samples = []
-        #     train_tot_corrects = []
-        #     train_losses = []
-        #     for client_idx in range(self.args.client_num_in_total):
-        #         # train data
-        #         metrics = self.trainer.test(self.train_data_local_dict[client_idx], self.device, self.args)
-        #         train_tot_correct, train_num_sample, train_loss = metrics['test_correct'], metrics['test_total'], \
-        #                                                           metrics['test_loss']
-        #         train_tot_corrects.append(copy.deepcopy(train_tot_correct))
-        #         train_num_samples.append(copy.deepcopy(train_num_sample))
-        #         train_losses.append(copy.deepcopy(train_loss))
-        #
-        #         """
-        #         Note: CI environment is CPU-based computing.
-        #         The training speed for RNN training is to slow in this setting, so we only test a client to make sure there is no programming error.
-        #         """
-        #         if self.args.ci == 1:
-        #             break
-        #
-        #     # test on training dataset
-        #     train_acc = sum(train_tot_corrects) / sum(train_num_samples)
-        #     train_loss = sum(train_losses) / sum(train_num_samples)
-        #     wandb.log({"Train/Acc": train_acc, "round": round_idx})
-        #     wandb.log({"Train/Loss": train_loss, "round": round_idx})
-        #     stats = {'training_acc': train_acc, 'training_loss': train_loss}
-        #     logging.info(stats)
-        #
-        #     # test data
-        #     test_num_samples = []
-        #     test_tot_corrects = []
-        #     test_losses = []
-        #
-        #     if round_idx == self.args.comm_round - 1:
-        #         metrics = self.trainer.test(self.test_global, self.device, self.args)
-        #     else:
-        #         metrics = self.trainer.test(self.val_global, self.device, self.args)
-        #
-        #     test_tot_correct, test_num_sample, test_loss = metrics['test_correct'], metrics['test_total'], metrics[
-        #         'test_loss']
-        #     test_tot_corrects.append(copy.deepcopy(test_tot_correct))
-        #     test_num_samples.append(copy.deepcopy(test_num_sample))
-        #     test_losses.append(copy.deepcopy(test_loss))
-        #
-        #     # test on test dataset
-        #     test_acc = sum(test_tot_corrects) / sum(test_num_samples)
-        #     test_loss = sum(test_losses) / sum(test_num_samples)
-        #     wandb.log({"Test/Acc": test_acc, "round": round_idx})
-        #     wandb.log({"Test/Loss": test_loss, "round": round_idx})
-        #     stats = {'test_acc': test_acc, 'test_loss': test_loss}
-        #     logging.info(stats)
