@@ -1,7 +1,7 @@
-py=/Users/fenghao/Documents/pythonWork/venv/bin/python
-#py=python
+#py=/Users/fenghao/Documents/pythonWork/venv/bin/python
+py=python
 
-mpirun -np 11 --allow-run-as-root \
+mpirun -np 6 --allow-run-as-root \
 ${py} -m main.main_20news \
   --gpu_mapping_file "gpu/gpu_mapping.yaml" \
   --gpu_mapping_key test \
@@ -11,7 +11,7 @@ ${py} -m main.main_20news \
   --dataset "20news" \
   --data_file "data/store/20news/20news_data.h5" \
   --partition_file "data/store/20news/20news_partition.h5" \
-  --partition_method niid_quantity_clients=10_beta=5.0 \
+  --partition_method niid_quantity_clients=5_beta=5.0 \
   --fl_algorithm FedAvg \
   --model_type distilbert \
   --model_name distilbert-base-uncased \

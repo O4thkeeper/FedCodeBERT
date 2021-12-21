@@ -37,7 +37,7 @@ class BaseDataManager(ABC):
         # TODO: sync to the same logic to sample index
         # self.client_index_list = self.sample_client_index(process_id, num_workers)
         # self.client_index_list = self.get_all_clients()
-        self.client_index_list = self.sample_client_index(process_id, num_workers)
+        # self.client_index_list = self.sample_client_index(process_id, num_workers)
 
     @staticmethod
     def load_attributes(data_path):
@@ -57,30 +57,30 @@ class BaseDataManager(ABC):
     def read_instance_from_h5(self, data_file, index_list, desc):
         pass
 
-    def sample_client_index(self, process_id, num_workers):
-        '''
-        Sample client indices according to process_id
-        '''
-        # process_id = 0 means this process is the server process
-        if process_id == 0:
-            return None
-        else:
-            return self._simulated_sampling(process_id)
-
-    def _simulated_sampling(self, process_id):
-        res_client_indexes = list()
-        for round_idx in range(self.args.comm_round):
-            if self.num_clients == self.num_workers:
-                client_indexes = [client_index for client_index in range(self.num_clients)]
-            else:
-                nc = min(self.num_workers, self.num_clients)
-                # make sure for each comparison, we are selecting the same clients each round
-                np.random.seed(round_idx)
-                client_indexes = np.random.choice(range(self.num_clients), nc, replace=False)
-                # logging.info("client_indexes = %s" % str(client_indexes))
-            res_client_indexes.append(client_indexes[process_id - 1])
-        logging.info('process %d sample: %s' % (process_id, str(res_client_indexes)))
-        return res_client_indexes
+    # def sample_client_index(self, process_id, num_workers):
+    #     '''
+    #     Sample client indices according to process_id
+    #     '''
+    #     # process_id = 0 means this process is the server process
+    #     if process_id == 0:
+    #         return None
+    #     else:
+    #         return self._simulated_sampling(process_id)
+    #
+    # def _simulated_sampling(self, process_id):
+    #     res_client_indexes = list()
+    #     for round_idx in range(self.args.comm_round):
+    #         if self.num_clients == self.num_workers:
+    #             client_indexes = [client_index for client_index in range(self.num_clients)]
+    #         else:
+    #             nc = min(self.num_workers, self.num_clients)
+    #             # make sure for each comparison, we are selecting the same clients each round
+    #             np.random.seed(round_idx)
+    #             client_indexes = np.random.choice(range(self.num_clients), nc, replace=False)
+    #             # logging.info("client_indexes = %s" % str(client_indexes))
+    #         res_client_indexes.append(client_indexes[process_id - 1])
+    #     logging.info('process %d sample: %s' % (process_id, str(res_client_indexes)))
+    #     return res_client_indexes
 
     def get_all_clients(self):
         return list(range(0, self.num_clients))
@@ -223,8 +223,8 @@ class BaseDataManager(ABC):
         # train_data_local_dict = {}
         # test_data_local_dict = {}
         # train_data_local_num_dict = {}
-        self.client_index_list = list(set(self.client_index_list))
-        logging.info("self.client_index_list = " + str(self.client_index_list))
+        # self.client_index_list = list(set(self.client_index_list))
+        # logging.info("self.client_index_list = " + str(self.client_index_list))
 
         # todo only return part of data
         # for client_idx in self.client_index_list:
