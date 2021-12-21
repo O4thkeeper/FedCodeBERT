@@ -3,12 +3,13 @@ class MyMessage(object):
         message type definition
     """
     # server to client
-    MSG_TYPE_S2C_INIT_CONFIG = 1
-    MSG_TYPE_S2C_SYNC_MODEL_TO_CLIENT = 2
+    MSG_TYPE_S2C_INIT_CONFIG = 101
+    MSG_TYPE_S2C_SYNC_MODEL_TO_CLIENT = 102
+    MSG_TYPE_S2C_FINISH = 103
 
     # client to server
-    MSG_TYPE_C2S_SEND_MODEL_TO_SERVER = 3
-    MSG_TYPE_C2S_SEND_STATS_TO_SERVER = 4
+    MSG_TYPE_C2S_SEND_MODEL_TO_SERVER = 201
+    MSG_TYPE_C2S_SEND_STATS_TO_SERVER = 202
 
     MSG_ARG_KEY_TYPE = "msg_type"
     MSG_ARG_KEY_SENDER = "sender"
@@ -28,5 +29,3 @@ class MyMessage(object):
     MSG_ARG_KEY_TEST_CORRECT = "test_correct"
     MSG_ARG_KEY_TEST_ERROR = "test_error"
     MSG_ARG_KEY_TEST_NUM = "test_num_sample"
-
-

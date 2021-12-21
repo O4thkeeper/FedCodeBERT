@@ -22,7 +22,7 @@ def get_special_tokens():
 class ModelArgs:
     adam_epsilon: float = 1e-8
     best_model_dir: str = "outputs/best_model"
-    cache_dir: str = "cache_dir/"
+    cache_dir: str = "cache/"
     config: dict = field(default_factory=dict)
     custom_layer_parameters: list = field(default_factory=list)
     custom_parameter_groups: list = field(default_factory=list)

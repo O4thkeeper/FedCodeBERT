@@ -1,10 +1,10 @@
 py=/Users/fenghao/Documents/pythonWork/venv/bin/python
 #py=python
 
-mpirun -np 11 -hostfile mpi_host_file \
-${py} -m fedavg_main_tc \
-  --gpu_mapping_file "gpu_mapping.yaml" \
-  --gpu_mapping_key mapping_a100 \
+mpirun -np 11 --allow-run-as-root \
+${py} -m main.main_20news \
+  --gpu_mapping_file "gpu/gpu_mapping.yaml" \
+  --gpu_mapping_key test \
   --client_num_per_round 2 \
   --comm_round 10 \
   --ci 0 \
@@ -22,4 +22,4 @@ ${py} -m fedavg_main_tc \
   --lr 5e-5 \
   --server_lr 0.1 \
   --epochs 1 \
-  --output_dir "/tmp/fedavg_20news_output/"
+  --output_dir "tmp/fedavg_20news_output/"

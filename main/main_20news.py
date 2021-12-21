@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), "../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), "../../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), "../../../../")))
 
+
 def post_complete_message(tc_args):
     pipe_path = "/tmp/fednlp_tc"
     if not os.path.exists(pipe_path):
@@ -62,26 +63,23 @@ if __name__ == "__main__":
                  ", process ID = " + str(os.getpid()) +
                  ", process Name = " + str(psutil.Process(os.getpid())))
 
-    # logging.info("process_id = %d, size = %d" % (process_id, worker_number))
-
-    if process_id == 0:
-        # initialize the wandb machine learning experimental tracking platform (https://wandb.ai/automl/fednlp).
-        wandb.init(project="fednlp", entity="automl", name="FedNLP-" + str(args.fl_algorithm) +
-                                                           "-TC-" + str(args.dataset) + "-" + str(
-            args.model_name) + "-freeze-" + args.freeze_layers if args.freeze_layers else "",
-                   config=args)
+    # todo wandb init
+    # if process_id == 0:
+    # initialize the wandb machine learning experimental tracking platform (https://wandb.ai/automl/fednlp).
+    # wandb.init(project="fednlp", entity="automl", name="FedNLP-" + str(args.fl_algorithm) +
+    #                                                    "-TC-" + str(args.dataset) + "-" + str(
+    #     args.model_name) + "-freeze-" + args.freeze_layers if args.freeze_layers else "",
+    #            config=args)
 
     # device: check "gpu_mapping.yaml" to see how to define the topology
-    device = mapping_processes_to_gpu_device_from_yaml_file(
-        process_id, worker_number, args.gpu_mapping_file, args.gpu_mapping_key)
-    logging.info("process_id = %d, size = %d, device=%s" %
-                 (process_id, worker_number, str(device)))
+    device = mapping_processes_to_gpu_device_from_yaml_file(process_id, worker_number, args.gpu_mapping_file,
+                                                            args.gpu_mapping_key)
+    logging.info("process_id = %d, size = %d, device=%s" % (process_id, worker_number, str(device)))
     logging.info("torch.cuda.current_device()=" + str(torch.cuda.current_device()))
     logging.info("torch.cuda.device_count()=" + str(torch.cuda.device_count()))
 
     # dataset attributes
-    attributes = BaseDataManager.load_attributes(
-        args.data_file_path)
+    attributes = BaseDataManager.load_attributes(args.data_file_path)
     num_labels = len(attributes["label_vocab"])
 
     # create the model
@@ -115,29 +113,41 @@ if __name__ == "__main__":
                                  "fedprox_mu": args.fedprox_mu
                                  })
     model_args.config["num_labels"] = num_labels
-    model_config, client_model, tokenizer = create_model(
-        model_args, formulation="classification")
+    model_config, client_model, tokenizer = create_model(model_args, formulation="classification")
+    logging.info("process %d :model created" % process_id)
 
     # trainer
-    client_trainer = TextClassificationTrainer(
-        model_args, device, client_model, None, None)
+    client_trainer = TextClassificationTrainer(model_args, device, client_model, None, None)
     fed_trainer = FedTransformerTrainer(client_trainer, client_model)
+    logging.info("process %d :trainer created" % process_id)
 
     # data manager
-    preprocessor = TLMPreprocessor(
-        args=model_args, label_vocab=attributes["label_vocab"],
-        tokenizer=tokenizer)
+    preprocessor = TLMPreprocessor(args=model_args, label_vocab=attributes["label_vocab"], tokenizer=tokenizer)
     dm = TextClassificationDataManager(args, model_args, preprocessor, process_id, args.client_num_per_round)
-    train_data_num, train_data_global, test_data_global, train_data_local_num_dict, \
-    train_data_local_dict, test_data_local_dict, num_clients = dm.load_federated_data(process_id=process_id)
+    # train_data_num, train_data_global, test_data_global, train_data_local_num_dict, \
+    # train_data_local_dict, test_data_local_dict, num_clients = dm.load_federated_data(process_id=process_id)
+    # train_data_num 训练资料数
+    # train_data_global 训练资料BaseDataLoader
+    # test_data_global 测试资料数
+    # train_data_local_num_dict: none if server else dict{client id: length of BaseDataLoader}
+    # train_data_local_dict: none if server else dict{client id: BaseDataLoader}
+    # test_data_local_dict: none if server else dict{client id: BaseDataLoader}
+    # num_clients: 10
+    logging.info("process %d :data manager created" % process_id)
+    fl_algorithm = get_fl_algorithm_initializer(args.fl_algorithm)
+    args.client_num_in_total = worker_number - 1
+    train_loader, train_data_num, test_loader = dm.load_federated_data(process_id)
+    fl_algorithm(process_id, worker_number, device, comm, train_loader, train_data_num, test_loader, fed_trainer, args)
 
     # start FedAvg algorithm
     # for distributed algorithm, train_data_gloabl and test_data_global are required
-    if process_id == 0:
-        client_trainer.test_dl = test_data_global
-    args.client_num_in_total = num_clients
-
-    fl_algorithm = get_fl_algorithm_initializer(args.fl_algorithm)
-    fl_algorithm(process_id, worker_number, device, comm, client_model, train_data_num,
-                 train_data_global, test_data_global, train_data_local_num_dict,
-                 train_data_local_dict, test_data_local_dict, args, fed_trainer)
+    # if process_id == 0:
+    #     client_trainer.test_dl = test_data_global
+    # args.client_num_in_total = num_clients
+    #
+    # # fl_algorithm = get_fl_algorithm_initializer(args.fl_algorithm)
+    # # logging.info("process %d :fl method created" % process_id)
+    # # todo bind data to client
+    # fl_algorithm(process_id, worker_number, device, comm, client_model, train_data_num,
+    #              train_data_global, test_data_global, train_data_local_num_dict,
+    #              train_data_local_dict, test_data_local_dict, args, fed_trainer)

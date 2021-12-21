@@ -9,7 +9,11 @@ import numpy as np
 import sklearn
 import torch
 import wandb
-from training.utils.text_classification_utils import *
+from sklearn.metrics import (
+    confusion_matrix,
+    matthews_corrcoef,
+)
+
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 from transformers import (

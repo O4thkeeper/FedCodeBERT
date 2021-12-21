@@ -71,17 +71,15 @@ class BaseDataManager(ABC):
         res_client_indexes = list()
         for round_idx in range(self.args.comm_round):
             if self.num_clients == self.num_workers:
-                client_indexes = [client_index
-                                  for client_index in range(self.num_clients)]
+                client_indexes = [client_index for client_index in range(self.num_clients)]
             else:
                 nc = min(self.num_workers, self.num_clients)
                 # make sure for each comparison, we are selecting the same clients each round
                 np.random.seed(round_idx)
-                client_indexes = np.random.choice(
-                    range(self.num_clients),
-                    nc, replace=False)
+                client_indexes = np.random.choice(range(self.num_clients), nc, replace=False)
                 # logging.info("client_indexes = %s" % str(client_indexes))
             res_client_indexes.append(client_indexes[process_id - 1])
+        logging.info('process %d sample: %s' % (process_id, str(res_client_indexes)))
         return res_client_indexes
 
     def get_all_clients(self):
@@ -143,16 +141,16 @@ class BaseDataManager(ABC):
 
     def _load_federated_data_server(self, test_only=True, test_cut_off=None):
         state, res = self._load_data_loader_from_cache(-1)
-        train_data_local_dict = None
-        train_data_local_num_dict = None
-        test_data_local_dict = {}
+        # train_data_local_dict = None
+        # train_data_local_num_dict = None
+        # test_data_local_dict = {}
         if state:
             train_examples, train_features, train_dataset, test_examples, test_features, test_dataset = res
             logging.info("test data size " + str(len(test_examples)))
-            if train_dataset is None:
-                train_data_num = 0
-            else:
-                train_data_num = len(train_dataset)
+            # if train_dataset is None:
+            #     train_data_num = 0
+            # else:
+            #     train_data_num = len(train_dataset)
         else:
             data_file = h5py.File(self.args.data_file_path, "r", swmr=True)
             partition_file = h5py.File(
@@ -163,20 +161,14 @@ class BaseDataManager(ABC):
             # test_examples = []
             # test_features = []
             # test_dataset = []
-            for client_idx in tqdm(
-                    partition_file[partition_method]
-                    ["partition_data"].keys(),
-                    desc="Loading index from h5 file."):
-                train_index_list.extend(
-                    partition_file[partition_method]["partition_data"]
-                    [client_idx]["train"][()])
-                local_test_index_list = partition_file[partition_method][
-                    "partition_data"][client_idx]["test"][()]
+            for client_idx in tqdm(partition_file[partition_method]["partition_data"].keys(),
+                                   desc="Loading index from h5 file."):
+                train_index_list.extend(partition_file[partition_method]["partition_data"][client_idx]["train"][()])
+                local_test_index_list = partition_file[partition_method]["partition_data"][client_idx]["test"][()]
                 test_index_list.extend(local_test_index_list)
 
             if not test_only:
-                train_data = self.read_instance_from_h5(
-                    data_file, train_index_list)
+                train_data = self.read_instance_from_h5(data_file, train_index_list)
             if test_cut_off:
                 test_index_list.sort()
             test_index_list = test_index_list[:test_cut_off]
@@ -189,10 +181,10 @@ class BaseDataManager(ABC):
 
             train_examples, train_features, train_dataset = None, None, None
             if not test_only:
-                train_examples, train_features, train_dataset = self.preprocessor.transform(
-                    **train_data, index_list=train_index_list)
-            test_examples, test_features, test_dataset = self.preprocessor.transform(
-                **test_data, index_list=test_index_list)
+                train_examples, train_features, train_dataset = self.preprocessor.transform(**train_data,
+                                                                                            index_list=train_index_list)
+            test_examples, test_features, test_dataset = self.preprocessor.transform(**test_data,
+                                                                                     index_list=test_index_list)
             logging.info("caching test data size " + str(len(test_examples)))
 
             with open(res, "wb") as handle:
@@ -219,8 +211,7 @@ class BaseDataManager(ABC):
 
         logging.info("test_dl_global number = " + str(len(test_data_global)))
 
-        return (train_data_num, train_data_global, test_data_global,
-                train_data_local_num_dict, train_data_local_dict, test_data_local_dict, self.num_clients)
+        return train_data_global, train_data_num, test_data_global
 
     def _load_federated_data_local(self):
 
@@ -229,64 +220,60 @@ class BaseDataManager(ABC):
             self.args.partition_file_path, "r", swmr=True)
         partition_method = self.args.partition_method
 
-        train_data_local_dict = {}
-        test_data_local_dict = {}
-        train_data_local_num_dict = {}
+        # train_data_local_dict = {}
+        # test_data_local_dict = {}
+        # train_data_local_num_dict = {}
         self.client_index_list = list(set(self.client_index_list))
         logging.info("self.client_index_list = " + str(self.client_index_list))
 
-        for client_idx in self.client_index_list:
-            # TODO: cancel the partiation file usage
-            state, res = self._load_data_loader_from_cache(client_idx)
-            if state:
-                train_examples, train_features, train_dataset, test_examples, test_features, test_dataset = res
-            else:
-                train_index_list = partition_file[partition_method][
-                    "partition_data"][
-                    str(client_idx)]["train"][
-                    ()]
-                test_index_list = partition_file[partition_method][
-                    "partition_data"][
-                    str(client_idx)]["test"][
-                    ()]
-                train_data = self.read_instance_from_h5(
-                    data_file, train_index_list,
-                    desc=" train data of client_id=%d [_load_federated_data_local] " % client_idx)
-                test_data = self.read_instance_from_h5(
-                    data_file, test_index_list,
-                    desc=" test data of client_id=%d [_load_federated_data_local] " % client_idx)
+        # todo only return part of data
+        # for client_idx in self.client_index_list:
+        client_idx = self.process_id - 1
 
-                train_examples, train_features, train_dataset = self.preprocessor.transform(
-                    **train_data, index_list=train_index_list)
-                test_examples, test_features, test_dataset = self.preprocessor.transform(
-                    **test_data, index_list=test_index_list, evaluate=True)
+        state, res = self._load_data_loader_from_cache(client_idx)
+        if state:
+            train_examples, train_features, train_dataset, test_examples, test_features, test_dataset = res
+        else:
+            train_index_list = partition_file[partition_method]["partition_data"][str(client_idx)]["train"][()]
+            test_index_list = partition_file[partition_method]["partition_data"][str(client_idx)]["test"][()]
+            train_data = self.read_instance_from_h5(data_file, train_index_list,
+                                                    desc=" train data of client_id=%d [_load_federated_data_local] " % client_idx)
+            test_data = self.read_instance_from_h5(data_file, test_index_list,
+                                                   desc=" test data of client_id=%d [_load_federated_data_local] " % client_idx)
 
-                with open(res, "wb") as handle:
-                    pickle.dump(
-                        (train_examples, train_features, train_dataset, test_examples, test_features, test_dataset),
-                        handle)
+            train_examples, train_features, train_dataset = self.preprocessor.transform(
+                **train_data, index_list=train_index_list)
+            test_examples, test_features, test_dataset = self.preprocessor.transform(
+                **test_data, index_list=test_index_list, evaluate=True)
 
-            train_loader = BaseDataLoader(train_examples, train_features, train_dataset,
-                                          batch_size=self.train_batch_size,
-                                          num_workers=0,
-                                          pin_memory=True,
-                                          drop_last=False)
+            with open(res, "wb") as handle:
+                pickle.dump(
+                    (train_examples, train_features, train_dataset, test_examples, test_features, test_dataset),
+                    handle)
 
-            test_loader = BaseDataLoader(test_examples, test_features, test_dataset,
-                                         batch_size=self.eval_batch_size,
-                                         num_workers=0,
-                                         pin_memory=True,
-                                         drop_last=False)
-            train_data_local_dict[client_idx] = train_loader
-            test_data_local_dict[client_idx] = test_loader
-            train_data_local_num_dict[client_idx] = len(train_loader)
+        train_loader = BaseDataLoader(train_examples, train_features, train_dataset,
+                                      batch_size=self.train_batch_size,
+                                      num_workers=0,
+                                      pin_memory=True,
+                                      drop_last=False)
+
+        test_loader = BaseDataLoader(test_examples, test_features, test_dataset,
+                                     batch_size=self.eval_batch_size,
+                                     num_workers=0,
+                                     pin_memory=True,
+                                     drop_last=False)
+        # train_data_local_dict[client_idx] = train_loader
+        # test_data_local_dict[client_idx] = test_loader
+        # train_data_local_num_dict[client_idx] = len(train_loader)
 
         data_file.close()
         partition_file.close()
 
-        train_data_global, test_data_global, train_data_num = None, None, 0
-        return (train_data_num, train_data_global, test_data_global,
-                train_data_local_num_dict, train_data_local_dict, test_data_local_dict, self.num_clients)
+        train_data_num = len(train_examples)
+        # train_data_global, test_data_global, train_data_num = None, None, 0
+        # return (train_data_num, train_data_global, test_data_global,
+        #     train_data_local_num_dict, train_data_local_dict, test_data_local_dict, self.num_clients)
+        return train_loader, train_data_num, test_loader
 
     def _load_data_loader_from_cache(self, client_id):
         """
